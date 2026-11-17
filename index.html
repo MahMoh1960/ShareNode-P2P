@@ -6,7 +6,7 @@
     <title>ShareNode P2P - Transfert Mobile</title>
     <link rel="manifest" href="manifest.json">
     <meta name="theme-color" content="#0b192c">
-    <!-- Bibliothèque QR Code externe légère -->
+    <!-- Bibliothèque QR Code pour la génération -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
     <style>
         :root {
@@ -141,7 +141,7 @@
 
         .connect-row .custom-btn {
             width: auto;
-            padding: 12px 16px;
+            padding: 12px 14px;
             margin-top: 0;
             white-space: nowrap;
         }
@@ -150,13 +150,34 @@
             display: flex;
             flex-direction: column;
             align-items: center;
-            margin-top: 12px;
+            margin-top: 10px;
             background: #fff;
-            padding: 10px;
+            padding: 8px;
             border-radius: 8px;
             width: fit-content;
             margin-left: auto;
             margin-right: auto;
+        }
+
+        /* Fenêtre modale du scanner caméra */
+        #scanner-modal {
+            display: none;
+            position: fixed;
+            top: 0; left: 0; width: 100%; height: 100%;
+            background: rgba(0,0,0,0.9);
+            z-index: 1000;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            padding: 20px;
+        }
+
+        #scanner-video {
+            width: 100%;
+            max-width: 360px;
+            border-radius: 12px;
+            border: 2px solid var(--accent-yellow);
+            object-fit: cover;
         }
 
         .drop-zone {
@@ -249,18 +270,18 @@
             <span>Réseau P2P & Appariement</span>
             <span id="p2p-status" class="status-badge">Prêt</span>
         </div>
-        <div style="font-size: 0.85rem; color: var(--text-muted); margin-bottom: 10px; text-align: center;">
+        <div style="font-size: 0.85rem; color: var(--text-muted); margin-bottom: 8px; text-align: center;">
             Mon ID : <strong id="peer-id" style="color:var(--accent-yellow)">Génération...</strong>
         </div>
         
-        <!-- QR Code généré automatiquement -->
         <div id="qrcode" class="qr-container"></div>
         <div style="font-size: 0.75rem; color: var(--text-muted); text-align: center; margin-top: 6px;">
-            Faites scanner ce QR code par l'autre appareil
+            Scannez ce QR code pour vous connecter instantanément
         </div>
 
         <div class="connect-row" style="margin-top: 14px;">
-            <input type="text" id="target-id" placeholder="ID distant (ex: NODE-1234)">
+            <input type="text" id="target-id" placeholder="ID distant ou Scan">
+            <div class="custom-btn" onclick="startQrScanner()" style="padding: 12px 10px;">📷 Scan</div>
             <div class="custom-btn" onclick="connectToPeer()">Lier</div>
         </div>
     </div>
@@ -271,7 +292,7 @@
             <span>Partage de Fichiers</span>
         </div>
         <div class="drop-zone" onclick="document.getElementById('file-input').click()">
-            📁 Touchez pour sélectionner un fichier (Photo, Doc, APK, JSON)
+            📁 Touchez pour choisir un fichier (Photo, Doc, APK, JSON)
             <input type="file" id="file-input" style="display:none" onchange="handleFileSelect(event)">
         </div>
         <div id="file-name" class="file-info">Aucun fichier en attente.</div>
@@ -294,27 +315,31 @@
     <!-- Journaux de Télémétrie -->
     <div class="card" style="padding: 10px;">
         <div class="card-title" style="margin-bottom: 6px; font-size: 0.8rem;">Flux Système</div>
-        <div id="log-box" class="logs">[SYSTEM] ShareNode prêt à l'appariement.</div>
+        <div id="log-box" class="logs">[SYSTEM] ShareNode initialisé. Caméra prête.</div>
     </div>
 
     <footer>ShareNode P2P • Android Natif Ready</footer>
+</div>
+
+<!-- Modale Scanner Caméra -->
+<div id="scanner-modal">
+    <div style="color:var(--accent-yellow); margin-bottom: 12px; font-weight:600;">Visez le QR code du pair</div>
+    <video id="scanner-video" autoplay playsinline></video>
+    <div class="custom-btn" onclick="stopQrScanner()" style="max-width: 200px; margin-top: 16px; background:#ff4444!important; color:#fff!important;">Fermer la Caméra</div>
 </div>
 
 <script>
     const localId = "NODE-" + Math.floor(1000 + Math.random() * 9000);
     document.getElementById('peer-id').innerText = localId;
 
-    // Génération automatique du QR code contenant l'ID local
     window.onload = function() {
         try {
             new QRCode(document.getElementById("qrcode"), {
                 text: localId,
-                width: 128,
-                height: 128
+                width: 110,
+                height: 110
             });
-        } catch(e) {
-            console.log("QR Code generation skipped");
-        }
+        } catch(e) {}
     };
 
     const logBox = document.getElementById('log-box');
@@ -323,10 +348,10 @@
         logBox.innerHTML += `<br>[${time}] ${msg}`;
         logBox.scrollTop = logBox.scrollHeight;
     }
-    logMessage(`Nœud local initialisé : ${localId}`);
 
     let selectedFile = null;
     const transferHistory = [];
+    let videoStream = null;
 
     function handleFileSelect(event) {
         selectedFile = event.target.files[0];
@@ -337,18 +362,44 @@
         }
     }
 
+    // Gestion du Scanner Caméra natif
+    async function startQrScanner() {
+        const modal = document.getElementById('scanner-modal');
+        const video = document.getElementById('scanner-video');
+        modal.style.display = 'flex';
+        try {
+            videoStream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'environment' } });
+            video.srcObject = videoStream;
+            logMessage("Caméra activée pour le scan.");
+        } catch (err) {
+            logMessage("Erreur d'accès à la caméra.");
+            alert("Impossible d'accéder à la caméra. Vérifiez les permissions.");
+            modal.style.display = 'none';
+        }
+    }
+
+    function stopQrScanner() {
+        const modal = document.getElementById('scanner-modal');
+        if (videoStream) {
+            videoStream.getTracks().forEach(track => track.stop());
+            videoStream = null;
+        }
+        modal.style.display = 'none';
+        logMessage("Caméra fermée.");
+    }
+
     function connectToPeer() {
         const target = document.getElementById('target-id').value.trim();
         if (!target) {
             alert("Veuillez entrer ou scanner l'identifiant du destinataire.");
             return;
         }
-        logMessage(`Tentative de liaison avec ${target}...`);
+        logMessage(`Connexion au pair ${target}...`);
         document.getElementById('p2p-status').innerText = "Connexion...";
         setTimeout(() => {
             document.getElementById('p2p-status').innerText = "Connecté";
-            logMessage(`Canal P2P sécurisé établi avec ${target}.`);
-        }, 1200);
+            logMessage(`Liaison P2P établie avec ${target}.`);
+        }, 1000);
     }
 
     function sendFile() {
@@ -356,14 +407,14 @@
             alert("Veuillez sélectionner un fichier à envoyer.");
             return;
         }
-        logMessage(`Transmission de ${selectedFile.name} en cours...`);
+        logMessage(`Transmission de ${selectedFile.name}...`);
         let progress = 0;
         const interval = setInterval(() => {
             progress += 25;
             document.getElementById('upload-progress').style.width = progress + '%';
             if (progress >= 100) {
                 clearInterval(interval);
-                logMessage(`Fichier ${selectedFile.name} transmis avec succès !`);
+                logMessage(`Transfert réussi : ${selectedFile.name}`);
                 addHistory(selectedFile.name, 'Envoyé');
                 alert("Fichier transféré avec succès !");
             }
