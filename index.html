@@ -329,6 +329,15 @@
 </div>
 
 <script>
+    // Enregistrement du Service Worker pour le mode hors-ligne
+    if ('serviceWorker' in navigator) {
+        window.addEventListener('load', () => {
+            navigator.serviceWorker.register('./sw.js')
+                .then(reg => console.log('Service Worker enregistré :', reg.scope))
+                .catch(err => console.log('Échec Service Worker :', err));
+        });
+    }
+
     const localId = "NODE-" + Math.floor(1000 + Math.random() * 9000);
     document.getElementById('peer-id').innerText = localId;
 
@@ -362,7 +371,6 @@
         }
     }
 
-    // Gestion du Scanner Caméra natif
     async function startQrScanner() {
         const modal = document.getElementById('scanner-modal');
         const video = document.getElementById('scanner-video');
