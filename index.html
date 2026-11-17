@@ -6,6 +6,8 @@
     <title>ShareNode P2P - Transfert Mobile</title>
     <link rel="manifest" href="manifest.json">
     <meta name="theme-color" content="#0b192c">
+    <!-- Bibliothèque QR Code externe légère -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
     <style>
         :root {
             --bg-primary: #0b192c;
@@ -144,6 +146,19 @@
             white-space: nowrap;
         }
 
+        .qr-container {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            margin-top: 12px;
+            background: #fff;
+            padding: 10px;
+            border-radius: 8px;
+            width: fit-content;
+            margin-left: auto;
+            margin-right: auto;
+        }
+
         .drop-zone {
             border: 2px dashed var(--accent-yellow);
             border-radius: 8px;
@@ -228,17 +243,24 @@
         <p>Transfert Direct Sécurisé Mobile à Mobile</p>
     </header>
 
-    <!-- État de Connexion -->
+    <!-- État de Connexion & QR Code -->
     <div class="card">
         <div class="card-title">
-            <span>Réseau P2P Local</span>
+            <span>Réseau P2P & Appariement</span>
             <span id="p2p-status" class="status-badge">Prêt</span>
         </div>
-        <div style="font-size: 0.85rem; color: var(--text-muted); margin-bottom: 10px;">
-            Identifiant de l'appareil : <strong id="peer-id" style="color:var(--accent-yellow)">Génération...</strong>
+        <div style="font-size: 0.85rem; color: var(--text-muted); margin-bottom: 10px; text-align: center;">
+            Mon ID : <strong id="peer-id" style="color:var(--accent-yellow)">Génération...</strong>
         </div>
-        <div class="connect-row">
-            <input type="text" id="target-id" placeholder="ID pair distant (ex: NODE-1234)">
+        
+        <!-- QR Code généré automatiquement -->
+        <div id="qrcode" class="qr-container"></div>
+        <div style="font-size: 0.75rem; color: var(--text-muted); text-align: center; margin-top: 6px;">
+            Faites scanner ce QR code par l'autre appareil
+        </div>
+
+        <div class="connect-row" style="margin-top: 14px;">
+            <input type="text" id="target-id" placeholder="ID distant (ex: NODE-1234)">
             <div class="custom-btn" onclick="connectToPeer()">Lier</div>
         </div>
     </div>
@@ -282,6 +304,19 @@
     const localId = "NODE-" + Math.floor(1000 + Math.random() * 9000);
     document.getElementById('peer-id').innerText = localId;
 
+    // Génération automatique du QR code contenant l'ID local
+    window.onload = function() {
+        try {
+            new QRCode(document.getElementById("qrcode"), {
+                text: localId,
+                width: 128,
+                height: 128
+            });
+        } catch(e) {
+            console.log("QR Code generation skipped");
+        }
+    };
+
     const logBox = document.getElementById('log-box');
     function logMessage(msg) {
         const time = new Date().toLocaleTimeString();
@@ -305,7 +340,7 @@
     function connectToPeer() {
         const target = document.getElementById('target-id').value.trim();
         if (!target) {
-            alert("Veuillez entrer l'identifiant du destinataire.");
+            alert("Veuillez entrer ou scanner l'identifiant du destinataire.");
             return;
         }
         logMessage(`Tentative de liaison avec ${target}...`);
