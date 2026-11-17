@@ -24,9 +24,6 @@ jobs:
         with:
           gradle-version: '8.4'
 
-      - name: Configuration du SDK Android
-        uses: android-actions/setup-android@v3
-
       - name: Création du projet Android natif (Wrapper WebView)
         run: |
           mkdir -p app/src/main/java/com/sharenode/p2p
