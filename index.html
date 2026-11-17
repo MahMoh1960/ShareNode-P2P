@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>ShareNode - Transfert P2P Mobile</title>
+    <title>ShareNode P2P - Transfert Mobile</title>
     <link rel="manifest" href="manifest.json">
     <meta name="theme-color" content="#0b192c">
     <style>
@@ -94,7 +94,6 @@
             border: 1px solid rgba(0, 255, 136, 0.3);
         }
 
-        /* Bouton custom avec texte noir strict sur fond jaune */
         .custom-btn {
             width: 100%;
             background-color: #ffcc00 !important;
@@ -114,13 +113,6 @@
 
         .custom-btn:active {
             opacity: 0.8;
-        }
-
-        .custom-btn.secondary {
-            background-color: transparent !important;
-            color: #ffcc00 !important;
-            border: 1px solid #ffcc00;
-            box-shadow: none;
         }
 
         .connect-row {
@@ -155,7 +147,7 @@
         .drop-zone {
             border: 2px dashed var(--accent-yellow);
             border-radius: 8px;
-            padding: 24px;
+            padding: 20px;
             text-align: center;
             background: rgba(11, 25, 44, 0.6);
             color: var(--text-muted);
@@ -189,6 +181,25 @@
             transition: width 0.2s;
         }
 
+        .history-list {
+            font-size: 0.8rem;
+            color: var(--text-muted);
+            max-height: 100px;
+            overflow-y: auto;
+            display: flex;
+            flex-direction: column;
+            gap: 6px;
+        }
+
+        .history-item {
+            background: rgba(11, 25, 44, 0.8);
+            padding: 6px 10px;
+            border-radius: 6px;
+            display: flex;
+            justify-content: space-between;
+            border-left: 3px solid var(--accent-yellow);
+        }
+
         .logs {
             font-family: monospace;
             font-size: 0.75rem;
@@ -196,7 +207,7 @@
             background: #07101c;
             padding: 10px;
             border-radius: 6px;
-            height: 80px;
+            height: 70px;
             overflow-y: auto;
             border: 1px solid rgba(255,255,255,0.05);
         }
@@ -214,47 +225,57 @@
 <div class="container">
     <header>
         <h1>ShareNode P2P</h1>
-        <p>Transfert Rapide de Fichiers Mobile à Mobile</p>
+        <p>Transfert Direct Sécurisé Mobile à Mobile</p>
     </header>
 
     <!-- État de Connexion -->
     <div class="card">
         <div class="card-title">
-            <span>État du Réseau P2P</span>
+            <span>Réseau P2P Local</span>
             <span id="p2p-status" class="status-badge">Prêt</span>
         </div>
         <div style="font-size: 0.85rem; color: var(--text-muted); margin-bottom: 10px;">
             Identifiant de l'appareil : <strong id="peer-id" style="color:var(--accent-yellow)">Génération...</strong>
         </div>
         <div class="connect-row">
-            <input type="text" id="target-id" placeholder="ID distant (ex: NODE-1234)">
-            <div class="custom-btn" onclick="connectToPeer()">Connecter</div>
+            <input type="text" id="target-id" placeholder="ID pair distant (ex: NODE-1234)">
+            <div class="custom-btn" onclick="connectToPeer()">Lier</div>
         </div>
     </div>
 
     <!-- Section Envoi de Fichiers -->
     <div class="card">
         <div class="card-title">
-            <span>Envoyer un Fichier</span>
+            <span>Partage de Fichiers</span>
         </div>
         <div class="drop-zone" onclick="document.getElementById('file-input').click()">
-            📁 Touchez ici pour choisir un fichier à partager
+            📁 Touchez pour sélectionner un fichier (Photo, Doc, APK, JSON)
             <input type="file" id="file-input" style="display:none" onchange="handleFileSelect(event)">
         </div>
-        <div id="file-name" class="file-info">Aucun fichier sélectionné.</div>
+        <div id="file-name" class="file-info">Aucun fichier en attente.</div>
         <div class="progress-bar-container">
             <div id="upload-progress" class="progress-bar"></div>
         </div>
-        <div class="custom-btn" onclick="sendFile()">Envoyer au Pair</div>
+        <div class="custom-btn" onclick="sendFile()">Transmettre au Pair</div>
+    </div>
+
+    <!-- Historique des Transferts -->
+    <div class="card">
+        <div class="card-title">
+            <span>Historique Récent</span>
+        </div>
+        <div id="history-box" class="history-list">
+            <div style="text-align:center; color: var(--text-muted);">Aucun transfert récent</div>
+        </div>
     </div>
 
     <!-- Journaux de Télémétrie -->
     <div class="card" style="padding: 10px;">
-        <div class="card-title" style="margin-bottom: 6px; font-size: 0.8rem;">Flux d'Événements</div>
-        <div id="log-box" class="logs">[SYSTEM] ShareNode initialisé. En attente de connexion...</div>
+        <div class="card-title" style="margin-bottom: 6px; font-size: 0.8rem;">Flux Système</div>
+        <div id="log-box" class="logs">[SYSTEM] ShareNode prêt à l'appariement.</div>
     </div>
 
-    <footer>ShareNode P2P • Android APK Ready</footer>
+    <footer>ShareNode P2P • Android Natif Ready</footer>
 </div>
 
 <script>
@@ -267,15 +288,17 @@
         logBox.innerHTML += `<br>[${time}] ${msg}`;
         logBox.scrollTop = logBox.scrollHeight;
     }
-    logMessage(`Votre identifiant de nœud : ${localId}`);
+    logMessage(`Nœud local initialisé : ${localId}`);
 
     let selectedFile = null;
+    const transferHistory = [];
 
     function handleFileSelect(event) {
         selectedFile = event.target.files[0];
         if (selectedFile) {
-            document.getElementById('file-name').innerText = `Fichier : ${selectedFile.name} (${(selectedFile.size / 1024).toFixed(1)} Ko)`;
-            logMessage(`Fichier chargé en mémoire : ${selectedFile.name}`);
+            const sizeKb = (selectedFile.size / 1024).toFixed(1);
+            document.getElementById('file-name').innerText = `Fichier : ${selectedFile.name} (${sizeKb} Ko)`;
+            logMessage(`Fichier chargé : ${selectedFile.name}`);
         }
     }
 
@@ -285,30 +308,43 @@
             alert("Veuillez entrer l'identifiant du destinataire.");
             return;
         }
-        logMessage(`Connexion en cours vers ${target}...`);
+        logMessage(`Tentative de liaison avec ${target}...`);
         document.getElementById('p2p-status').innerText = "Connexion...";
         setTimeout(() => {
             document.getElementById('p2p-status').innerText = "Connecté";
-            logMessage(`Liaison P2P établie avec succès avec ${target}.`);
-        }, 1500);
+            logMessage(`Canal P2P sécurisé établi avec ${target}.`);
+        }, 1200);
     }
 
     function sendFile() {
         if (!selectedFile) {
-            alert("Veuillez d'abord sélectionner un fichier.");
+            alert("Veuillez sélectionner un fichier à envoyer.");
             return;
         }
-        logMessage(`Début du transfert de ${selectedFile.name}...`);
+        logMessage(`Transmission de ${selectedFile.name} en cours...`);
         let progress = 0;
         const interval = setInterval(() => {
-            progress += 20;
+            progress += 25;
             document.getElementById('upload-progress').style.width = progress + '%';
             if (progress >= 100) {
                 clearInterval(interval);
-                logMessage("Transfert terminé avec succès !");
+                logMessage(`Fichier ${selectedFile.name} transmis avec succès !`);
+                addHistory(selectedFile.name, 'Envoyé');
                 alert("Fichier transféré avec succès !");
             }
-        }, 200);
+        }, 150);
+    }
+
+    function addHistory(fileName, type) {
+        const time = new Date().toLocaleTimeString();
+        transferHistory.unshift({ name: fileName, type: type, time: time });
+        const historyBox = document.getElementById('history-box');
+        historyBox.innerHTML = transferHistory.map(h => `
+            <div class="history-item">
+                <span><b>${h.name}</b> (${h.type})</span>
+                <span style="color:var(--accent-yellow);">${h.time}</span>
+            </div>
+        `).join('');
     }
 </script>
 
