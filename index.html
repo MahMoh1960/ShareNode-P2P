@@ -94,6 +94,7 @@
             border: 1px solid rgba(0, 255, 136, 0.3);
         }
 
+        /* Bouton custom avec texte noir strict sur fond jaune */
         .custom-btn {
             width: 100%;
             background-color: #ffcc00 !important;
@@ -120,6 +121,35 @@
             color: #ffcc00 !important;
             border: 1px solid #ffcc00;
             box-shadow: none;
+        }
+
+        .connect-row {
+            display: flex;
+            gap: 8px;
+            width: 100%;
+        }
+
+        .connect-row input {
+            flex: 1;
+            min-width: 0;
+            background: rgba(11, 25, 44, 0.9);
+            border: 1px solid var(--border-color);
+            border-radius: 8px;
+            padding: 12px;
+            color: #fff;
+            font-size: 0.9rem;
+            outline: none;
+        }
+
+        .connect-row input:focus {
+            border-color: var(--accent-yellow);
+        }
+
+        .connect-row .custom-btn {
+            width: auto;
+            padding: 12px 16px;
+            margin-top: 0;
+            white-space: nowrap;
         }
 
         .drop-zone {
@@ -187,18 +217,18 @@
         <p>Transfert Rapide de Fichiers Mobile à Mobile</p>
     </header>
 
-    <!-- Statut de Connexion -->
+    <!-- État de Connexion -->
     <div class="card">
         <div class="card-title">
             <span>État du Réseau P2P</span>
             <span id="p2p-status" class="status-badge">Prêt</span>
         </div>
-        <div style="font-size: 0.85rem; color: var(--text-muted); margin-bottom: 8px;">
+        <div style="font-size: 0.85rem; color: var(--text-muted); margin-bottom: 10px;">
             Identifiant de l'appareil : <strong id="peer-id" style="color:var(--accent-yellow)">Génération...</strong>
         </div>
-        <div class="form-group" style="display:flex; gap:8px;">
-            <input type="text" id="target-id" placeholder="ID de l'appareil distant..." style="flex:1; background:rgba(11,25,44,0.9); border:1px solid var(--border-color); border-radius:8px; padding:10px; color:#fff; font-size:0.9rem; outline:none;">
-            <div class="custom-btn" style="width:auto; padding:10px 16px; margin-top:0;" onclick="connectToPeer()">Connecter</div>
+        <div class="connect-row">
+            <input type="text" id="target-id" placeholder="ID distant (ex: NODE-1234)">
+            <div class="custom-btn" onclick="connectToPeer()">Connecter</div>
         </div>
     </div>
 
@@ -228,16 +258,15 @@
 </div>
 
 <script>
+    const localId = "NODE-" + Math.floor(1000 + Math.random() * 9000);
+    document.getElementById('peer-id').innerText = localId;
+
     const logBox = document.getElementById('log-box');
     function logMessage(msg) {
         const time = new Date().toLocaleTimeString();
         logBox.innerHTML += `<br>[${time}] ${msg}`;
-        logBox.logBox?.scrollTop = logBox.scrollHeight;
+        logBox.scrollTop = logBox.scrollHeight;
     }
-
-    // Simulation d'ID local unique
-    const localId = "NODE-" + Math.floor(1000 + Math.random() * 9000);
-    document.getElementById('peer-id').innerText = localId;
     logMessage(`Votre identifiant de nœud : ${localId}`);
 
     let selectedFile = null;
@@ -272,7 +301,7 @@
         logMessage(`Début du transfert de ${selectedFile.name}...`);
         let progress = 0;
         const interval = setInterval(() => {
-            progress += 10;
+            progress += 20;
             document.getElementById('upload-progress').style.width = progress + '%';
             if (progress >= 100) {
                 clearInterval(interval);
